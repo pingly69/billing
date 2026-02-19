@@ -28,7 +28,6 @@
         button { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 800; font-size: 17px; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 8px rgba(0,185,0,0.2); }
         button:active { transform: scale(0.98); }
         .status-msg { text-align: center; margin-top: 12px; font-size: 15px; min-height: 24px; font-weight: 500; }
-        /* Custom Checkbox for OCR */
         .ai-toggle-wrapper { display: flex; align-items: center; gap: 10px; cursor: pointer; }
         #aiToggle { width: 20px; height: 20px; accent-color: var(--primary); cursor: pointer; }
     </style>
@@ -150,11 +149,10 @@
                         const json = await res.json();
                         if (json.success) {
                             const d = json.data;
-                            // คืนค่า AI กลับเข้าช่องต่างๆ อย่างถูกต้อง
                             document.getElementById('taxId').value = d.taxId || "";
                             document.getElementById('sellerName').value = d.sellerName || "";
                             document.getElementById('billNumber').value = d.billNumber || "";
-                            document.getElementById('billDate').value = d.billDate || ""; // คืนค่าวันที่
+                            document.getElementById('billDate').value = d.billDate || "";
                             document.getElementById('preVat').value = d.preVat || 0;
                             document.getElementById('vatAmount').value = d.vatAmount || 0;
                             document.getElementById('expenseNote').value = d.expenseNote || "";
@@ -199,6 +197,27 @@
                 const json = await res.json();
                 if (json.success) {
                     status.innerHTML = "<b style='color:green;'>✅ บันทึกสำเร็จ!</b>";
+                    
+                    // --- ส่วนที่ดึงกลับมาจากรูปภาพ: ส่งข้อความสรุปกลับเข้า Line Chat ---
+                    if (liff.isInClient()) {
+                        const summaryText = `✅ บันทึกบิลสำเร็จแล้ว\n` +
+                                          `--------------------\n` +
+                                          `👤 ผู้เบิก: ${payload.requesterName}\n` +
+                                          `🏢 ชื่อผู้ขาย: ${payload.sellerName}\n` +
+                                          `📄 เลขที่บิล: ${payload.billNumber}\n` +
+                                          `📅 วันที่: ${payload.billDate}\n` +
+                                          `💰 ยอดก่อน VAT: ${payload.preVat} ฿\n` +
+                                          `🧧 VAT: ${payload.vatAmount} ฿\n` +
+                                          `--------------------\n` +
+                                          `💰 ยอดรวมสุทธิ: ${payload.totalAmount} ฿`;
+                        try {
+                            await liff.sendMessages([{ type: 'text', text: summaryText }]);
+                        } catch (err) {
+                            console.error("Send message failed", err);
+                        }
+                    }
+                    
+                    // ปิดหน้าต่างหลังจากส่งข้อความเสร็จ (รอ 2 วินาทีเพื่อให้ผู้ใช้เห็นสถานะ)
                     setTimeout(() => liff.closeWindow(), 2000);
                 } else {
                     status.innerText = "❌ ผิดพลาด: " + json.message;
