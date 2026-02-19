@@ -7,105 +7,83 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        :root { --primary: #00b900; --bg: #f4f4f7; --accent: #0081cc; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 10px; }
-        .app-container { max-width: 500px; margin: auto; background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; }
-        .header { background: var(--primary); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
-        .user-profile { display: flex; align-items: center; padding: 10px 15px; background: #fff; border-bottom: 1px solid #eee; gap: 10px; }
-        .user-profile img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--primary); }
-        .ai-banner { background: #f0fff0; padding: 10px 15px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+        :root { --primary: #00b900; --bg: #f4f4f7; }
+        body { font-family: sans-serif; background: var(--bg); padding: 10px; }
+        .app-container { max-width: 500px; margin: auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .header { background: var(--primary); color: white; padding: 15px; }
+        .ai-banner { background: #f0fff0; padding: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
         form { padding: 15px; }
-        .section-title { font-size: 11px; font-weight: bold; color: #999; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #f0f0f0; margin-top: 15px; }
-        .row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
-        .field { flex: 1; min-width: 140px; }
-        label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #555; }
-        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 14px; background: white; }
-        select:focus, input:focus { outline: none; border-color: var(--primary); }
-        .file-box { border: 2px dashed var(--primary); padding: 20px; text-align: center; border-radius: 12px; cursor: pointer; position: relative; background: #f9fff9; }
-        .loading-overlay { display: none; position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(255,255,255,0.9); border-radius: 12px; align-items: center; justify-content: center; flex-direction: column; z-index: 10; }
-        button { width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
-        button:disabled { background: #ccc; }
-        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        .row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .field { flex: 1; }
+        label { display: block; font-size: 12px; margin-bottom: 4px; color: #666; font-weight: bold; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .file-box { border: 2px dashed var(--primary); padding: 30px; text-align: center; border-radius: 12px; cursor: pointer; position: relative; background: #fafafa; }
+        .loading-overlay { display: none; position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(255,255,255,0.85); border-radius: 12px; align-items: center; justify-content: center; flex-direction: column; z-index: 5; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; border-radius: 20px; transition: .4s; }
-        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: .4s; }
-        input:checked + .slider { background-color: var(--primary); }
-        input:checked + .slider:before { transform: translateX(20px); }
-        .approval-section { background: #eef7ff; padding: 12px; border-radius: 10px; border: 1px solid #cce5ff; }
+        button { width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; }
+        button:disabled { background: #ccc; }
+        .status-msg { text-align: center; margin-top: 10px; font-size: 14px; min-height: 20px; }
     </style>
 </head>
 <body>
     <div class="app-container">
         <div class="header">
-            <h3><i class="fas fa-file-invoice-dollar"></i> Smart Billing LIFF V2</h3>
+            <h3><i class="fas fa-file-invoice-dollar"></i> Smart Billing V2</h3>
         </div>
-        <div class="user-profile" id="userProfile" style="display:none;">
-            <img id="userImg" src="" alt="Profile">
-            <div class="user-profile-info">
-                <div class="user-name" id="userNameDisplay">Loading...</div>
-                <div class="user-status">Line Authenticated</div>
-            </div>
-        </div>
-        
         <div class="ai-banner">
-            <span><i class="fas fa-robot"></i> <b>AI OCR Auto-Fill</b></span>
-            <label class="switch"><input type="checkbox" id="aiToggle" checked><span class="slider"></span></label>
+            <span><i class="fas fa-robot"></i> AI OCR Auto-Fill</span>
+            <input type="checkbox" id="aiToggle" checked>
         </div>
-
         <form id="taxForm">
-            <div class="section-title">เอกสารบิล</div>
             <div class="file-box" onclick="document.getElementById('billFile').click()">
-                <div class="loading-overlay" id="aiLoading"><div class="spinner"></div></div>
+                <div class="loading-overlay" id="aiLoading">
+                    <div class="spinner"></div>
+                    <div style="margin-top:10px; color:var(--primary); font-weight:bold;">AI กำลังอ่านบิล...</div>
+                </div>
                 <i class="fas fa-camera fa-2x" style="color: var(--primary);"></i><br>
-                <span id="fileNameDisplay" style="font-size: 13px; color: #888;">ถ่ายรูป/อัพโหลดใบเสร็จ</span>
+                <span id="fileNameDisplay">กดถ่ายรูปหรืออัพโหลด</span>
                 <input type="file" id="billFile" accept="image/*" style="display:none;" onchange="handleFileChange(this)">
             </div>
 
-            <div class="section-title">รายละเอียดผู้ขาย</div>
-            <div class="row">
-                <div class="field"><label>Tax ID ผู้ขาย</label><input type="text" id="taxId" required></div>
-                <div class="field"><label>ชื่อผู้ขาย</label><input type="text" id="sellerName" required></div>
-            </div>
-            <div class="row">
-                <div class="field"><label>เลขที่ใบกำกับ</label><input type="text" id="billNumber" required></div>
-                <div class="field" style="flex:0.5;"><label>สาขา</label><input type="text" id="branchCode" placeholder="00000" required></div>
-            </div>
-            
-            <div class="section-title">ข้อมูลการเงิน</div>
-            <div class="row"><div class="field"><label>วันที่ใบกำกับ</label><input type="date" id="billDate" required></div></div>
-            <div class="row">
-                <div class="field"><label>ยอดก่อน VAT</label><input type="number" step="0.01" id="preVat" oninput="calculateTotal()" required></div>
-                <div class="field"><label>VAT</label><input type="number" step="0.01" id="vatAmount" oninput="calculateTotal()" required></div>
-            </div>
-            <div class="row"><div class="field"><label>ยอดรวมสุทธิ</label><input type="number" id="totalAmount" readonly style="background:#f8f9fa;"></div></div>
-            
-            <div class="section-title">ข้อมูลผู้เบิก</div>
-            <div class="row">
-                <div class="field" style="flex:0.5;"><label>รหัส Project</label><input type="text" id="projectCode" required></div>
-                <div class="field"><label>ชื่อผู้ขอเบิก</label><input type="text" id="requesterName" required></div>
-            </div>
-            <div class="row"><div class="field"><label>หมายเหตุ</label><input type="text" id="expenseNote"></div></div>
-
-            <!-- เพิ่มส่วนการเลือกผู้อนุมัติ (Requirement Version 2) -->
-            <div class="section-title">การอนุมัติ (Approval)</div>
-            <div class="approval-section">
-                <div class="field">
-                    <label style="color:#0056b3;"><i class="fas fa-user-check"></i> เลือกผู้อนุมัติ (Approve Request)</label>
-                    <select id="approve_request" required>
-                        <option value="">-- โปรดเลือกผู้อนุมัติ --</option>
-                    </select>
+            <div style="margin-top: 15px;">
+                <div class="row">
+                    <div class="field"><label>Tax ID ผู้ขาย</label><input type="text" id="taxId" required></div>
+                    <div class="field"><label>ชื่อผู้ขาย</label><input type="text" id="sellerName" required></div>
                 </div>
+                <div class="row">
+                    <div class="field"><label>เลขที่บิล</label><input type="text" id="billNumber" required></div>
+                    <div class="field" style="flex:0.4;"><label>สาขา</label><input type="text" id="branchCode" value="00000" required></div>
+                </div>
+                <div class="row">
+                    <div class="field"><label>วันที่</label><input type="date" id="billDate" required></div>
+                </div>
+                <div class="row">
+                    <div class="field"><label>ยอดก่อน VAT</label><input type="number" step="0.01" id="preVat" oninput="calculateTotal()" required></div>
+                    <div class="field"><label>VAT</label><input type="number" step="0.01" id="vatAmount" oninput="calculateTotal()" required></div>
+                </div>
+                <div class="row">
+                    <div class="field"><label>ยอดสุทธิ</label><input type="number" id="totalAmount" readonly style="background:#eee;"></div>
+                </div>
+                <div class="row">
+                    <div class="field"><label>Project</label><input type="text" id="projectCode" required></div>
+                    <div class="field"><label>ผู้เบิก</label><input type="text" id="requesterName" required></div>
+                </div>
+                <div class="row">
+                    <div class="field">
+                        <label>ผู้อนุมัติ (Approve Request)</label>
+                        <select id="approve_request" required><option value="">-- โหลดข้อมูล... --</option></select>
+                    </div>
+                </div>
+                <div class="row"><div class="field"><label>หมายเหตุ</label><input type="text" id="expenseNote"></div></div>
             </div>
-
-            <button type="button" id="submitBtn" onclick="submitForm()">ยืนยันบันทึกข้อมูล</button>
-            <div id="status" style="text-align:center; margin-top:10px; font-size: 14px;"></div>
+            <button type="button" id="submitBtn" onclick="submitForm()">บันทึกข้อมูล</button>
+            <div id="status" class="status-msg"></div>
         </form>
     </div>
 
     <script>
-        // Update URL เป็น Web App ที่ Publish ใหม่
+        // *** สำคัญ: ต้องใส่ URL ของ Web App หลังจาก Publish/Deploy ใหม่ ***
         const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx1jZ1HFaG-eqs_Mx8PZ9WlUqprgut_TTJoDF-0GpMRJfATFys-nfWkuIW-CM-PrcQQ/exec"; 
         const LIFF_ID = "2009016720-H0IBJAkd";
         let userData = { userId: "", displayName: "", email: "" };
@@ -118,12 +96,7 @@
                 else {
                     const profile = await liff.getProfile();
                     userData = { userId: profile.userId, displayName: profile.displayName, email: liff.getDecodedIDToken()?.email || "" };
-                    document.getElementById('userProfile').style.display = 'flex';
-                    document.getElementById('userImg').src = profile.pictureUrl || "";
-                    document.getElementById('userNameDisplay').innerText = profile.displayName;
                     document.getElementById('requesterName').value = profile.displayName;
-                    
-                    // ดึงรายชื่อผู้อนุมัติทันทีที่โหลดเสร็จ
                     loadApprovers();
                 }
             } catch (err) { console.error(err); }
@@ -131,24 +104,21 @@
 
         async function loadApprovers() {
             try {
-                const res = await fetch(GAS_WEB_APP_URL, { 
-                    method: "POST", 
-                    body: JSON.stringify({ action: "getApprovers" })
-                });
+                const res = await fetch(GAS_WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "getApprovers" })});
                 const json = await res.json();
                 if (json.success) {
                     const select = document.getElementById('approve_request');
+                    select.innerHTML = '<option value="">-- เลือกผู้อนุมัติ --</option>';
                     json.data.forEach(name => {
                         const opt = document.createElement('option');
-                        opt.value = name;
-                        opt.innerText = name;
+                        opt.value = name; opt.innerText = name;
                         select.appendChild(opt);
                     });
                 }
-            } catch (e) { console.error("Load approvers error:", e); }
+            } catch (e) { document.getElementById('status').innerText = "โหลดผู้อนุมัติไม่สำเร็จ"; }
         }
 
-        window.onload = () => { initLIFF(); document.getElementById('billDate').value = new Date().toISOString().split('T')[0]; };
+        window.onload = initLIFF;
 
         function calculateTotal() {
             const v1 = parseFloat(document.getElementById('preVat').value) || 0;
@@ -173,12 +143,17 @@
                             document.getElementById('taxId').value = d.taxId || "";
                             document.getElementById('sellerName').value = d.sellerName || "";
                             document.getElementById('billNumber').value = d.billNumber || "";
-                            document.getElementById('billDate').value = d.billDate || document.getElementById('billDate').value;
+                            document.getElementById('billDate').value = d.billDate || "";
                             document.getElementById('preVat').value = d.preVat || 0;
                             document.getElementById('vatAmount').value = d.vatAmount || 0;
                             calculateTotal();
+                        } else {
+                            throw new Error(json.message);
                         }
-                    } catch (e) { console.error(e); }
+                    } catch (e) { 
+                        console.error(e);
+                        alert("AI ไม่สามารถประมวลผลได้ โปรดกรอกข้อมูลเอง: " + e.message);
+                    }
                     document.getElementById('aiLoading').style.display = 'none';
                 }
             };
@@ -187,9 +162,8 @@
         async function submitForm() {
             const form = document.getElementById('taxForm');
             if (!form.checkValidity()) { form.reportValidity(); return; }
-            
             const btn = document.getElementById('submitBtn'); btn.disabled = true;
-            const status = document.getElementById('status'); status.innerText = "⏳ กำลังบันทึกพร้อมระบบความปลอดภัย...";
+            const status = document.getElementById('status'); status.innerText = "⏳ กำลังบันทึกข้อมูล...";
 
             const payload = {
                 taxId: document.getElementById('taxId').value,
@@ -203,7 +177,7 @@
                 projectCode: document.getElementById('projectCode').value,
                 requesterName: document.getElementById('requesterName').value,
                 expenseNote: document.getElementById('expenseNote').value,
-                approve_request: document.getElementById('approve_request').value, // เพิ่มค่าผู้อนุมัติ
+                approve_request: document.getElementById('approve_request').value,
                 fileBase64: currentFileBase64, fileType: currentFileType,
                 lineUserId: userData.userId, lineEmail: userData.email
             };
@@ -212,29 +186,13 @@
                 const res = await fetch(GAS_WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "submit", formData: payload })});
                 const json = await res.json();
                 if (json.success) {
-                    status.innerHTML = "<b style='color:green;'>✅ บันทึกและส่งคำขออนุมัติสำเร็จ!</b>";
-                    
-                    if (liff.isInClient()) {
-                        const summaryText = `✅ บันทึกบิลสำเร็จ (รออนุมัติ)\n` +
-                                          `------------------\n` +
-                                          `👤 ผู้เบิก: ${payload.requesterName}\n` +
-                                          `🏢 ชื่อผู้ขาย: ${payload.sellerName}\n` +
-                                          `📄 เลขที่บิล: ${payload.billNumber}\n` +
-                                          `💰 ยอดสุทธิ: ${payload.totalAmount} ฿\n` +
-                                          `👮 ผู้อนุมัติ: ${payload.approve_request}\n` +
-                                          `------------------\n` +
-                                          `สถานะ: Pending`;
-                        try {
-                            await liff.sendMessages([{ type: 'text', text: summaryText }]);
-                        } catch (err) { console.error("Send message failed", err); }
-                    }
-
-                    setTimeout(() => liff.closeWindow(), 2500);
+                    status.innerHTML = "<b style='color:green;'>✅ บันทึกสำเร็จ!</b>";
+                    setTimeout(() => liff.closeWindow(), 2000);
                 } else {
-                    status.innerText = "❌ เกิดข้อผิดพลาด: " + json.message;
+                    status.innerText = "❌ ผิดพลาด: " + json.message;
                     btn.disabled = false;
                 }
-            } catch (e) { status.innerText = "❌ การเชื่อมต่อผิดพลาด"; btn.disabled = false; }
+            } catch (e) { status.innerText = "❌ การเชื่อมต่อล้มเหลว"; btn.disabled = false; }
         }
     </script>
 </body>
