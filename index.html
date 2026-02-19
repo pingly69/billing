@@ -83,7 +83,7 @@
     </div>
 
     <script>
-        // *** สำคัญ: ต้องใส่ URL ของ Web App หลังจาก Publish/Deploy ใหม่ ***
+        // *** สำคัญ: ต้องใส่ URL ของ Web App หลังจาก Publish/Deploy ใหม่ทุกครั้ง ***
         const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx1jZ1HFaG-eqs_Mx8PZ9WlUqprgut_TTJoDF-0GpMRJfATFys-nfWkuIW-CM-PrcQQ/exec"; 
         const LIFF_ID = "2009016720-H0IBJAkd";
         let userData = { userId: "", displayName: "", email: "" };
@@ -92,19 +92,30 @@
         async function initLIFF() {
             try {
                 await liff.init({ liffId: LIFF_ID });
-                if (!liff.isLoggedIn()) { liff.login(); } 
-                else {
+                if (!liff.isLoggedIn()) { 
+                    liff.login(); 
+                } else {
                     const profile = await liff.getProfile();
-                    userData = { userId: profile.userId, displayName: profile.displayName, email: liff.getDecodedIDToken()?.email || "" };
+                    userData = { 
+                        userId: profile.userId, 
+                        displayName: profile.displayName, 
+                        email: liff.getDecodedIDToken()?.email || "" 
+                    };
                     document.getElementById('requesterName').value = profile.displayName;
                     loadApprovers();
                 }
-            } catch (err) { console.error(err); }
+            } catch (err) { 
+                console.error("LIFF Init Error:", err);
+                document.getElementById('status').innerText = "LIFF Error: " + err.message;
+            }
         }
 
         async function loadApprovers() {
             try {
-                const res = await fetch(GAS_WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "getApprovers" })});
+                const res = await fetch(GAS_WEB_APP_URL, { 
+                    method: "POST", 
+                    body: JSON.stringify({ action: "getApprovers" })
+                });
                 const json = await res.json();
                 if (json.success) {
                     const select = document.getElementById('approve_request');
@@ -115,7 +126,10 @@
                         select.appendChild(opt);
                     });
                 }
-            } catch (e) { document.getElementById('status').innerText = "โหลดผู้อนุมัติไม่สำเร็จ"; }
+            } catch (e) { 
+                console.error("Load Approvers Error:", e);
+                document.getElementById('status').innerText = "ไม่สามารถโหลดรายชื่อผู้อนุมัติได้"; 
+            }
         }
 
         window.onload = initLIFF;
@@ -126,18 +140,53 @@
             document.getElementById('totalAmount').value = (v1 + v2).toFixed(2);
         }
 
+        /**
+         * ฟังก์ชันจัดการเมื่อเลือกไฟล์รูปภาพ (AI Analysis Debug Edition)
+         */
         async function handleFileChange(input) {
-            const file = input.files[0]; if (!file) return;
+            const file = input.files[0]; 
+            if (!file) return;
+            
             document.getElementById('fileNameDisplay').innerText = file.name;
             currentFileType = file.type;
-            const reader = new FileReader(); reader.readAsDataURL(file);
+            
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerText = ""; 
+
+            const reader = new FileReader(); 
+            reader.readAsDataURL(file);
             reader.onload = async () => {
                 currentFileBase64 = reader.result.split(',')[1];
+                
                 if (document.getElementById('aiToggle').checked) {
                     document.getElementById('aiLoading').style.display = 'flex';
+                    statusDiv.innerHTML = "⏳ AI กำลังเรียกใช้บริการ...";
+                    
                     try {
-                        const res = await fetch(GAS_WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "analyze", base64: currentFileBase64, type: file.type })});
-                        const json = await res.json();
+                        const response = await fetch(GAS_WEB_APP_URL, { 
+                            method: "POST", 
+                            body: JSON.stringify({ 
+                                action: "analyze", 
+                                base64: currentFileBase64, 
+                                type: file.type 
+                            })
+                        });
+
+                        // 1. ตรวจสอบว่า HTTP Status OK หรือไม่
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(`HTTP Error ${response.status}: ${errorText.substring(0, 100)}`);
+                        }
+
+                        // 2. ตรวจสอบว่า Response เป็น JSON หรือไม่
+                        const contentType = response.headers.get("content-type");
+                        if (!contentType || !contentType.includes("application/json")) {
+                            const rawText = await response.text();
+                            throw new Error("Server did not return JSON. (Possible URL Error or Login Required)");
+                        }
+
+                        const json = await response.json();
+                        
                         if (json.success) {
                             const d = json.data;
                             document.getElementById('taxId').value = d.taxId || "";
@@ -147,12 +196,22 @@
                             document.getElementById('preVat').value = d.preVat || 0;
                             document.getElementById('vatAmount').value = d.vatAmount || 0;
                             calculateTotal();
+                            statusDiv.innerHTML = "<b style='color:green;'>✅ AI วิเคราะห์สำเร็จ</b>";
                         } else {
-                            throw new Error(json.message);
+                            // กรณีหลังบ้าน (GAS) ส่ง Error มา (เช่น Gemini Key ผิด)
+                            throw new Error(json.message || "Unknown error from Backend");
                         }
                     } catch (e) { 
-                        console.error(e);
-                        alert("AI ไม่สามารถประมวลผลได้ โปรดกรอกข้อมูลเอง: " + e.message);
+                        console.error("DEBUG: AI Analysis Failed", e);
+                        statusDiv.innerHTML = `<b style='color:red;'>❌ AI Error: ${e.message}</b>`;
+                        
+                        // แสดงรายละเอียด Error ที่ชัดเจนให้ผู้ใช้ทราบ
+                        let errorDetail = e.message;
+                        if (errorDetail.includes("failed to fetch")) {
+                            errorDetail = "ไม่สามารถเชื่อมต่อ Web App ได้ (โปรดเช็ค GAS_WEB_APP_URL หรือการตั้งค่า CORS)";
+                        }
+                        
+                        alert("การวิเคราะห์บิลล้มเหลว!\nเหตุผล: " + errorDetail + "\n\nคำแนะนำ: กรุณาตรวจสอบว่า API Key ใน Google Apps Script ยังใช้งานได้ปกติ");
                     }
                     document.getElementById('aiLoading').style.display = 'none';
                 }
@@ -162,8 +221,11 @@
         async function submitForm() {
             const form = document.getElementById('taxForm');
             if (!form.checkValidity()) { form.reportValidity(); return; }
-            const btn = document.getElementById('submitBtn'); btn.disabled = true;
-            const status = document.getElementById('status'); status.innerText = "⏳ กำลังบันทึกข้อมูล...";
+            
+            const btn = document.getElementById('submitBtn'); 
+            btn.disabled = true;
+            const status = document.getElementById('status'); 
+            status.innerText = "⏳ กำลังบันทึกข้อมูล...";
 
             const payload = {
                 taxId: document.getElementById('taxId').value,
@@ -178,21 +240,29 @@
                 requesterName: document.getElementById('requesterName').value,
                 expenseNote: document.getElementById('expenseNote').value,
                 approve_request: document.getElementById('approve_request').value,
-                fileBase64: currentFileBase64, fileType: currentFileType,
-                lineUserId: userData.userId, lineEmail: userData.email
+                fileBase64: currentFileBase64, 
+                fileType: currentFileType,
+                lineUserId: userData.userId, 
+                lineEmail: userData.email
             };
 
             try {
-                const res = await fetch(GAS_WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "submit", formData: payload })});
+                const res = await fetch(GAS_WEB_APP_URL, { 
+                    method: "POST", 
+                    body: JSON.stringify({ action: "submit", formData: payload })
+                });
                 const json = await res.json();
                 if (json.success) {
                     status.innerHTML = "<b style='color:green;'>✅ บันทึกสำเร็จ!</b>";
                     setTimeout(() => liff.closeWindow(), 2000);
                 } else {
-                    status.innerText = "❌ ผิดพลาด: " + json.message;
-                    btn.disabled = false;
+                    throw new Error(json.message);
                 }
-            } catch (e) { status.innerText = "❌ การเชื่อมต่อล้มเหลว"; btn.disabled = false; }
+            } catch (e) { 
+                console.error("Submit Error:", e);
+                status.innerText = "❌ บันทึกไม่สำเร็จ: " + e.message; 
+                btn.disabled = false; 
+            }
         }
     </script>
 </body>
