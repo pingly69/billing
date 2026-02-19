@@ -1,259 +1,195 @@
 <!DOCTYPE html>
-<html lang="th">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>บันทึกเบิกค่าเดินทาง (LIFF)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- LIFF SDK -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Smart Billing LIFF</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap');
-        body { font-family: 'Sarabun', sans-serif; }
+        :root { --primary: #00b900; --bg: #f4f4f7; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 10px; }
+        .app-container { max-width: 500px; margin: auto; background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; }
+        .header { background: var(--primary); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .user-profile { display: flex; align-items: center; padding: 10px 15px; background: #fff; border-bottom: 1px solid #eee; gap: 10px; }
+        .user-profile img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--primary); }
+        .ai-banner { background: #f0fff0; padding: 10px 15px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+        form { padding: 15px; }
+        .section-title { font-size: 11px; font-weight: bold; color: #999; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+        .row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+        .field { flex: 1; min-width: 140px; }
+        label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #555; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 14px; }
+        .file-box { border: 2px dashed var(--primary); padding: 20px; text-align: center; border-radius: 12px; cursor: pointer; position: relative; background: #f9fff9; }
+        .loading-overlay { display: none; position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(255,255,255,0.9); border-radius: 12px; align-items: center; justify-content: center; flex-direction: column; z-index: 10; }
+        button { width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; border-radius: 20px; transition: .4s; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: .4s; }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(20px); }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen">
-    <div id="root"></div>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <h3><i class="fas fa-file-invoice-dollar"></i> Smart Billing LIFF</h3>
+        </div>
+        <div class="user-profile" id="userProfile" style="display:none;">
+            <img id="userImg" src="" alt="Profile">
+            <div class="user-profile-info">
+                <div class="user-name" id="userNameDisplay">Loading...</div>
+                <div class="user-status">Line Authenticated</div>
+            </div>
+        </div>
+        <div class="ai-banner">
+            <span><i class="fas fa-robot"></i> <b>AI OCR Auto-Fill</b></span>
+            <label class="switch"><input type="checkbox" id="aiToggle" checked><span class="slider"></span></label>
+        </div>
+        <form id="taxForm">
+            <div class="section-title">เอกสารบิล</div>
+            <div class="file-box" onclick="document.getElementById('billFile').click()">
+                <div class="loading-overlay" id="aiLoading"><div class="spinner"></div></div>
+                <i class="fas fa-camera fa-2x" style="color: var(--primary);"></i><br>
+                <span id="fileNameDisplay" style="font-size: 13px; color: #888;">ถ่ายรูป/อัพโหลดใบเสร็จ</span>
+                <input type="file" id="billFile" accept="image/*" style="display:none;" onchange="handleFileChange(this)">
+            </div>
+            <div style="margin-top: 15px;">
+                <div class="section-title">รายละเอียด</div>
+                <div class="row">
+                    <div class="field"><label>Tax ID ผู้ขาย</label><input type="text" id="taxId" required></div>
+                    <div class="field"><label>ชื่อผู้ขาย</label><input type="text" id="sellerName" required></div>
+                </div>
+                <div class="row">
+                    <div class="field"><label>เลขที่ใบกำกับ</label><input type="text" id="billNumber" required></div>
+                    <div class="field" style="flex:0.5;"><label>สาขา</label><input type="text" id="branchCode" placeholder="00000" required></div>
+                </div>
+                <div class="row"><div class="field"><label>วันที่ใบกำกับ</label><input type="date" id="billDate" required></div></div>
+                <div class="row">
+                    <div class="field"><label>ยอดก่อน VAT</label><input type="number" step="0.01" id="preVat" oninput="calculateTotal()" required></div>
+                    <div class="field"><label>VAT</label><input type="number" step="0.01" id="vatAmount" oninput="calculateTotal()" required></div>
+                </div>
+                <div class="row"><div class="field"><label>ยอดรวมสุทธิ</label><input type="number" id="totalAmount" readonly style="background:#f8f9fa;"></div></div>
+                <div class="row">
+                    <div class="field" style="flex:0.5;"><label>รหัส Project</label><input type="text" id="projectCode" required></div>
+                    <div class="field"><label>ชื่อผู้ขอเบิก</label><input type="text" id="requesterName" required></div>
+                </div>
+                <div class="row"><div class="field"><label>หมายเหตุ</label><input type="text" id="expenseNote"></div></div>
+            </div>
+            <button type="button" id="submitBtn" onclick="submitForm()">ยืนยันบันทึกข้อมูล</button>
+            <div id="status" style="text-align:center; margin-top:10px; font-size: 14px;"></div>
+        </form>
+    </div>
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
-
-        // --- CONFIGURATION ---
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyF_RWhcxaPU_IblvklPLCwC0OvHVe_nHXV9PY5JNPPzY_oWpM8Yde90vfzLm47PGoEoQ/exec"; 
+    <script>
+        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx1jZ1HFaG-eqs_Mx8PZ9WlUqprgut_TTJoDF-0GpMRJfATFys-nfWkuIW-CM-PrcQQ/exec"; 
         const LIFF_ID = "2009016720-H0IBJAkd";
-        const FIX_RATE = 4;
+        let userData = { userId: "", displayName: "", email: "" };
+        let currentFileBase64 = "", currentFileType = "";
 
-        const Icons = {
-            Car: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>,
-            Loader: (props) => <svg {...props} className={props.className + " animate-spin"} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>,
-            Image: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        };
+        async function initLIFF() {
+            try {
+                await liff.init({ liffId: LIFF_ID });
+                if (!liff.isLoggedIn()) { liff.login(); } 
+                else {
+                    const profile = await liff.getProfile();
+                    userData = { userId: profile.userId, displayName: profile.displayName, email: liff.getDecodedIDToken()?.email || "" };
+                    document.getElementById('userProfile').style.display = 'flex';
+                    document.getElementById('userImg').src = profile.pictureUrl || "";
+                    document.getElementById('userNameDisplay').innerText = profile.displayName;
+                    document.getElementById('requesterName').value = profile.displayName;
+                }
+            } catch (err) { console.error(err); }
+        }
 
-        const App = () => {
-            const [formData, setFormData] = useState({
-                request_date: new Date().toISOString().split('T')[0],
-                requester_name: 'กำลังโหลด...', team_name: '', site_name: '', travel_details: '',
-                origin: '', destination: '', trip_type: 'เที่ยวเดียว',
-                distance_km: 0, toll_fee: 0, parking_fee: 0,
-                line_user_id: '' // [แก้ไขเพิ่ม] เก็บ LINE User ID
-            });
-            const [selectedFile, setSelectedFile] = useState(null);
-            const [loading, setLoading] = useState(false);
+        window.onload = () => { initLIFF(); document.getElementById('billDate').value = new Date().toISOString().split('T')[0]; };
 
-            useEffect(() => {
-                const initLiff = async () => {
+        function calculateTotal() {
+            const v1 = parseFloat(document.getElementById('preVat').value) || 0;
+            const v2 = parseFloat(document.getElementById('vatAmount').value) || 0;
+            document.getElementById('totalAmount').value = (v1 + v2).toFixed(2);
+        }
+
+        async function handleFileChange(input) {
+            const file = input.files[0]; if (!file) return;
+            document.getElementById('fileNameDisplay').innerText = file.name;
+            currentFileType = file.type;
+            const reader = new FileReader(); reader.readAsDataURL(file);
+            reader.onload = async () => {
+                currentFileBase64 = reader.result.split(',')[1];
+                if (document.getElementById('aiToggle').checked) {
+                    document.getElementById('aiLoading').style.display = 'flex';
                     try {
-                        await liff.init({ liffId: LIFF_ID });
-                        if (liff.isLoggedIn()) {
-                            const profile = await liff.getProfile();
-                            // [แก้ไขเพิ่ม] ดึงทั้งชื่อและ User ID มาเก็บไว้ใน State
-                            setFormData(prev => ({ 
-                                ...prev, 
-                                requester_name: profile.displayName,
-                                line_user_id: profile.userId
-                            }));
-                        } else {
-                            liff.login();
+                        const res = await fetch(GAS_WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "analyze", base64: currentFileBase64, type: file.type })});
+                        const json = await res.json();
+                        if (json.success) {
+                            const d = json.data;
+                            document.getElementById('taxId').value = d.taxId || "";
+                            document.getElementById('sellerName').value = d.sellerName || "";
+                            document.getElementById('billNumber').value = d.billNumber || "";
+                            document.getElementById('billDate').value = d.billDate || document.getElementById('billDate').value;
+                            document.getElementById('preVat').value = d.preVat || 0;
+                            document.getElementById('vatAmount').value = d.vatAmount || 0;
+                            calculateTotal();
                         }
-                    } catch (err) {
-                        console.error("LIFF Init Error:", err);
-                        setFormData(prev => ({ ...prev, requester_name: "User (Error Profile)" }));
-                    }
-                };
-                initLiff();
-            }, []);
-
-            const mileageAmount = Number(formData.distance_km) * FIX_RATE;
-            const totalAmount = mileageAmount + Number(formData.toll_fee) + Number(formData.parking_fee);
-
-            const handleFileChange = (e) => {
-                const file = e.target.files[0];
-                if (file && file.size <= 5 * 1024 * 1024) {
-                    setSelectedFile(file);
-                } else if (file) {
-                    alert("ไฟล์ต้องมีขนาดไม่เกิน 5MB");
-                    e.target.value = null;
+                    } catch (e) { console.error(e); }
+                    document.getElementById('aiLoading').style.display = 'none';
                 }
             };
+        }
 
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                setLoading(true);
-                
-                let fileData = null;
-                let fileName = null;
+        async function submitForm() {
+            const form = document.getElementById('taxForm');
+            if (!form.checkValidity()) { form.reportValidity(); return; }
+            const btn = document.getElementById('submitBtn'); btn.disabled = true;
+            const status = document.getElementById('status'); status.innerText = "⏳ กำลังบันทึก...";
 
-                if (selectedFile) {
-                    const reader = new FileReader();
-                    fileData = await new Promise(resolve => {
-                        reader.onload = (ev) => resolve(ev.target.result);
-                        reader.readAsDataURL(selectedFile);
-                    });
-                    fileName = selectedFile.name;
-                }
+            const payload = {
+                taxId: document.getElementById('taxId').value,
+                sellerName: document.getElementById('sellerName').value,
+                branchCode: document.getElementById('branchCode').value,
+                billNumber: document.getElementById('billNumber').value,
+                billDate: document.getElementById('billDate').value,
+                preVat: document.getElementById('preVat').value,
+                vatAmount: document.getElementById('vatAmount').value,
+                totalAmount: document.getElementById('totalAmount').value,
+                projectCode: document.getElementById('projectCode').value,
+                requesterName: document.getElementById('requesterName').value,
+                expenseNote: document.getElementById('expenseNote').value,
+                fileBase64: currentFileBase64, fileType: currentFileType,
+                lineUserId: userData.userId, lineEmail: userData.email
+            };
 
-                const payload = {
-                    ...formData,
-                    mileage_amount: mileageAmount,
-                    total_amount: totalAmount,
-                    update_datetime: new Date().toLocaleString('th-TH'),
-                    fileData, fileName
-                };
-
-                try {
-                    // 1. ส่งข้อมูลไปยัง Google Apps Script
-                    await fetch(GAS_URL, {
-                        method: 'POST',
-                        mode: 'no-cors', 
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
+            try {
+                const res = await fetch(GAS_WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "submit", formData: payload })});
+                const json = await res.json();
+                if (json.success) {
+                    status.innerHTML = "<b style='color:green;'>✅ บันทึกสำเร็จ!</b>";
                     
-                    // 2. ส่งข้อความสรุปกลับเข้าไปใน LINE Chat (ถ้าใช้งานผ่านแอป LINE)
+                    // ส่วนที่เพิ่มเข้ามาตามตัวอย่างในรูปภาพ: ส่ง Message กลับเข้า Line Chat
                     if (liff.isInClient()) {
-                        const summaryText = 
-                            `✅ บันทึกเบิกค่าเดินทางสำเร็จ\n` +
-                            `━━━━━━━━━━━━━━\n` +
-                            `👤 ผู้เบิก: ${payload.requester_name}\n` +
-                            `📅 วันที่: ${payload.request_date}\n` +
-                            `📍 Site งาน: ${payload.site_name}\n` +
-                            `📝 รายละเอียด: ${payload.travel_details}\n` +
-                            `🚗 ระยะทาง: ${payload.distance_km} กม.\n` +
-                            `🛣️ ค่าทางด่วน: ${Number(payload.toll_fee).toLocaleString()} ฿\n` +
-                            `🅿️ ค่ารถ/ที่จอด: ${Number(payload.parking_fee).toLocaleString()} ฿\n` +
-                            `━━━━━━━━━━━━━━\n` +
-                            `💰 ยอดสุทธิ: ${payload.total_amount.toLocaleString()} ฿`;
-
+                        const summaryText = `✅ บันทึกบิลสำเร็จแล้ว\n` +
+                                          `------------------\n` +
+                                          `👤 ผู้เบิก: ${payload.requesterName}\n` +
+                                          `🏢 ชื่อผู้ขาย: ${payload.sellerName}\n` +
+                                          `📄 เลขที่บิล: ${payload.billNumber}\n` +
+                                          `📅 วันที่: ${payload.billDate}\n` +
+                                          `💰 ยอดก่อน VAT: ${payload.preVat} ฿\n` +
+                                          `🧾 VAT: ${payload.vatAmount} ฿\n` +
+                                          `------------------\n` +
+                                          `💰 ยอดรวมสุทธิ: ${payload.totalAmount} ฿`;
                         try {
                             await liff.sendMessages([{ type: 'text', text: summaryText }]);
-                        } catch (sendErr) {
-                            console.error("ส่งข้อความไม่สำเร็จ (ตรวจสอบ Scopes):", sendErr);
-                        }
-                        
-                        // 3. ปิดหน้าต่าง LIFF ทันทีหลังจากส่งข้อความ
-                        liff.closeWindow();
-                    } else {
-                        alert("บันทึกสำเร็จแล้ว (โหมด Browser)");
-                        window.location.reload();
+                        } catch (err) { console.error("Send message failed", err); }
                     }
-                    
-                } catch (err) {
-                    alert("เกิดข้อผิดพลาดในการส่งข้อมูล: " + err.message);
-                } finally {
-                    setLoading(false);
+
+                    setTimeout(() => liff.closeWindow(), 2000);
                 }
-            };
-
-            return (
-                <div className="py-4 px-3 max-w-md mx-auto">
-                    {/* ส่วนหัวของแอป */}
-                    <div className="bg-white rounded-2xl shadow-md border-b p-4 flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-md">
-                            <Icons.Car className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h1 className="text-lg font-bold text-slate-800 leading-none">เบิกค่าเดินทาง</h1>
-                            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">LINE LIFF System</span>
-                        </div>
-                    </div>
-
-                    <form onSubmit={handleSubmit} className="bg-white shadow-xl rounded-2xl p-5 space-y-4">
-                        <div className="space-y-4">
-                            {/* ข้อมูลผู้เบิก ดึงจาก LINE Profile */}
-                            <div>
-                                <label className="text-[10px] font-bold text-slate-400 mb-1 block uppercase">ชื่อผู้ขอเบิก (ดึงจาก LINE)</label>
-                                <input type="text" readOnly value={formData.requester_name} className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg text-slate-600 font-bold outline-none" />
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="text-[10px] font-bold text-slate-400 mb-1 block uppercase">วันที่</label>
-                                    <input type="date" value={formData.request_date} onChange={e => setFormData({...formData, request_date: e.target.value})} className="w-full p-2 border border-slate-200 rounded-lg text-sm" />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-bold text-slate-400 mb-1 block uppercase">ทีม / ฝ่าย</label>
-                                    <input type="text" value={formData.team_name} onChange={e => setFormData({...formData, team_name: e.target.value})} className="w-full p-2 border border-slate-200 rounded-lg text-sm" placeholder="ระบุทีม" />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="text-[10px] font-bold text-slate-400 mb-1 block uppercase">Site งาน / ปลายทาง</label>
-                                <input type="text" value={formData.site_name} onChange={e => setFormData({...formData, site_name: e.target.value})} className="w-full p-2.5 border border-slate-200 rounded-lg text-sm" placeholder="ไปที่ไหน?" required />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="text-[10px] font-bold text-slate-400 mb-1 block uppercase">จาก (ต้นทาง)</label>
-                                    <input type="text" placeholder="ระบุต้นทาง" value={formData.origin} onChange={e => setFormData({...formData, origin: e.target.value})} className="w-full p-2 border border-slate-200 rounded-lg text-xs" required />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-bold text-slate-400 mb-1 block uppercase">ถึง (ปลายทาง)</label>
-                                    <input type="text" placeholder="ระบุปลายทาง" value={formData.destination} onChange={e => setFormData({...formData, destination: e.target.value})} className="w-full p-2 border border-slate-200 rounded-lg text-xs" required />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="text-[10px] font-bold text-slate-400 mb-1 block uppercase">รายละเอียดการเดินทาง</label>
-                                <textarea placeholder="ระบุรายละเอียด..." rows="2" value={formData.travel_details} onChange={e => setFormData({...formData, travel_details: e.target.value})} className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-slate-50" required></textarea>
-                            </div>
-
-                            {/* ส่วนอัปโหลดรูปภาพ (ไม่บังคับ) */}
-                            <div>
-                                <label className="text-[10px] font-bold text-slate-400 mb-1 block uppercase">แนบรูปภาพ (ถ้ามี)</label>
-                                <div className="relative">
-                                    <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" id="file-input" />
-                                    <label htmlFor="file-input" className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-all text-slate-500 text-sm">
-                                        <Icons.Image className="w-5 h-5" />
-                                        {selectedFile ? <span className="text-blue-600 font-bold truncate max-w-[150px]">{selectedFile.name}</span> : 'เลือกรูปภาพ...'}
-                                    </label>
-                                </div>
-                            </div>
-                            
-                            <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 space-y-3">
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="col-span-2">
-                                        <label className="text-[9px] font-bold text-blue-800 uppercase mb-1 block">ประเภทการเดินทาง</label>
-                                        <select value={formData.trip_type} onChange={e => setFormData({...formData, trip_type: e.target.value})} className="w-full p-2 bg-white border border-blue-200 rounded-lg text-xs font-bold">
-                                            <option>เที่ยวเดียว</option><option>ไปกลับ</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-[9px] font-bold text-blue-800 uppercase mb-1 block">ระยะทาง (กม.)</label>
-                                        <input type="number" value={formData.distance_km} onChange={e => setFormData({...formData, distance_km: e.target.value})} className="w-full p-2 border border-blue-200 rounded-lg text-center font-bold" />
-                                    </div>
-                                    <div>
-                                        <label className="text-[9px] font-bold text-blue-800 uppercase mb-1 block">ค่าทางด่วน (฿)</label>
-                                        <input type="number" value={formData.toll_fee} onChange={e => setFormData({...formData, toll_fee: e.target.value})} className="w-full p-2 border border-blue-200 rounded-lg text-center" placeholder="0" />
-                                    </div>
-                                    <div className="col-span-2">
-                                        <label className="text-[9px] font-bold text-blue-800 uppercase mb-1 block">ค่ารถ/ที่จอด (฿)</label>
-                                        <input type="number" value={formData.parking_fee} onChange={e => setFormData({...formData, parking_fee: e.target.value})} className="w-full p-2 border border-blue-200 rounded-lg text-center" placeholder="0" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* ยอดรวมสุทธิและปุ่มบันทึก */}
-                        <div className="pt-2">
-                            <div className="bg-blue-600 rounded-2xl p-4 text-white mb-4 flex justify-between items-center shadow-lg border border-white/20">
-                                <div className="text-xs opacity-80 font-bold uppercase tracking-widest">ยอดเบิกสุทธิ</div>
-                                <div className="text-3xl font-black tracking-tight">{totalAmount.toLocaleString()} ฿</div>
-                            </div>
-                            <button type="submit" disabled={loading || totalAmount <= 0} className={`w-full py-4 rounded-2xl font-bold text-lg shadow-xl flex items-center justify-center gap-3 transition-all ${loading ? 'bg-slate-300' : 'bg-slate-800 text-white active:scale-95'}`}>
-                                {loading ? <Icons.Loader className="w-6 h-6" /> : 'บันทึกข้อมูล'}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+            } catch (e) { status.innerText = "❌ ผิดพลาด"; btn.disabled = false; }
+        }
     </script>
 </body>
 </html>
